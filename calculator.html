@@ -9,7 +9,7 @@
     h1 { text-align: center; color: #3b82f6; }
     label { font-weight: bold; }
     .section { margin-bottom: 24px; }
-    .stats-grid, .boosts-grid, .training-grid { display: grid; grid-template-columns: 130px 1fr 1fr; gap: 10px; align-items: center; }
+    .stats-grid, .boosts-grid, .training-grid, .gain-grid { display: grid; grid-template-columns: 130px 1fr 1fr; gap: 10px; align-items: center; }
     .dropdown { width: 80px; }
     input[type="number"], input[type="text"] { width: 80px; padding: 4px; border: 1px solid #ccc; border-radius: 5px; }
     .note { font-size: 0.9em; color: #888; }
@@ -18,6 +18,7 @@
     .error { color: #e11d48; font-size: 0.95em; }
     .profile-controls { margin-bottom: 18px; }
     #dinoList, #defaultDinoList { width: 180px; }
+    .behind-final { background: #f7fafc; border-radius: 8px; padding: 16px 18px; margin-top: 18px; }
   </style>
 </head>
 <body>
@@ -34,36 +35,11 @@
       <button id="loadProfileBtn">Load</button>
       <button id="deleteProfileBtn">Delete</button>
     </div>
-    <!-- Section: Base Stats -->
+    <!-- Controls (level, boosts, training) -->
     <div class="section">
-      <label>Base Stats</label>
-      <div class="stats-grid">
-        <span>Health:</span><input type="number" id="baseHealth" value="1000" min="0"><span></span>
-        <span>Attack:</span><input type="number" id="baseAttack" value="500" min="0"><span></span>
-        <span>Speed:</span><input type="number" id="baseSpeed" value="100" min="0"><span></span>
-        <span>Armor:</span><input type="number" id="baseArmor" value="10" min="0"><span></span>
-        <span>Crit Rate:</span><input type="number" id="baseCritRate" value="5" min="0"><span>%</span>
-        <span>Crit Damage:</span><input type="number" id="baseCritDamage" value="150" min="0"><span>%</span>
-      </div>
-    </div>
-    <!-- Section: Per-level Gain -->
-    <div class="section">
-      <label>Per-level Gain</label>
-      <div class="stats-grid">
-        <span>Health Gain:</span><input type="number" id="gainHealth" value="50" min="0"><span></span>
-        <span>Attack Gain:</span><input type="number" id="gainAttack" value="25" min="0"><span></span>
-        <span>Speed Gain:</span><input type="number" id="gainSpeed" value="1" min="0"><span></span>
-        <span>Armor Gain:</span><input type="number" id="gainArmor" value="1" min="0"><span></span>
-        <span>Crit Rate Gain:</span><input type="number" id="gainCritRate" value="0.2" min="0" step="0.01"><span>%</span>
-        <span>Crit Damage Gain:</span><input type="number" id="gainCritDamage" value="0.5" min="0" step="0.01"><span>%</span>
-      </div>
-    </div>
-    <!-- Section: Level Selection -->
-    <div class="section">
-      <label>Level</label> 
+      <label>Level</label>
       <select id="level" class="dropdown"></select>
     </div>
-    <!-- Section: Boosts -->
     <div class="section">
       <label>Boosts <span class="note">(Distribute up to 20 between Health, Attack, Speed)</span></label>
       <div class="boosts-grid">
@@ -73,7 +49,6 @@
       </div>
       <div class="error" id="boostError"></div>
     </div>
-    <!-- Section: Training Points -->
     <div class="section">
       <label>Training Points <span class="note">(Up to 120 per stat, or custom cap)</span></label>
       <div class="training-grid">
@@ -86,23 +61,47 @@
       </div>
       <div class="error" id="tpError"></div>
     </div>
-    <!-- Section: Final Stats -->
+    <!-- Final Stats -->
     <div class="final-stats" id="finalStats"></div>
+    <!-- Base Stats (moved below) -->
+    <div class="behind-final">
+      <label>Base Stats</label>
+      <div class="stats-grid">
+        <span>Health:</span><input type="number" id="baseHealth" value="1000" min="0"><span></span>
+        <span>Attack:</span><input type="number" id="baseAttack" value="500" min="0"><span></span>
+        <span>Speed:</span><input type="number" id="baseSpeed" value="100" min="0"><span></span>
+        <span>Armor:</span><input type="number" id="baseArmor" value="10" min="0"><span></span>
+        <span>Crit Rate:</span><input type="number" id="baseCritRate" value="5" min="0"><span>%</span>
+        <span>Crit Damage:</span><input type="number" id="baseCritDamage" value="150" min="0"><span>%</span>
+      </div>
+    </div>
+    <!-- Per-level Gain (moved below, now percent) -->
+    <div class="behind-final">
+      <label>Per-level Increase (%)</label>
+      <div class="gain-grid">
+        <span>Health Gain:</span><input type="number" id="gainHealth" value="3" min="0" step="0.01"><span>%</span>
+        <span>Attack Gain:</span><input type="number" id="gainAttack" value="2.5" min="0" step="0.01"><span>%</span>
+        <span>Speed Gain:</span><input type="number" id="gainSpeed" value="1" min="0" step="0.01"><span>%</span>
+        <span>Armor Gain:</span><input type="number" id="gainArmor" value="1" min="0" step="0.01"><span>%</span>
+        <span>Crit Rate Gain:</span><input type="number" id="gainCritRate" value="0.2" min="0" step="0.01"><span>%</span>
+        <span>Crit Damage Gain:</span><input type="number" id="gainCritDamage" value="0.5" min="0" step="0.01"><span>%</span>
+      </div>
+    </div>
   </div>
   <script>
     // ---- Default Dino Presets ----
     const defaultDinos = {
       "Tyrannosaurus": {
         baseHealth: 1200, baseAttack: 600, baseSpeed: 90, baseArmor: 10, baseCritRate: 5, baseCritDamage: 150,
-        gainHealth: 60, gainAttack: 34, gainSpeed: 1, gainArmor: 1, gainCritRate: 0.2, gainCritDamage: 0.5
+        gainHealth: 3, gainAttack: 2.8, gainSpeed: 1, gainArmor: 1, gainCritRate: 0.2, gainCritDamage: 0.5
       },
       "Velociraptor": {
         baseHealth: 800, baseAttack: 350, baseSpeed: 140, baseArmor: 5, baseCritRate: 10, baseCritDamage: 135,
-        gainHealth: 40, gainAttack: 17, gainSpeed: 2, gainArmor: 0.5, gainCritRate: 0.3, gainCritDamage: 0.6
+        gainHealth: 2, gainAttack: 1.7, gainSpeed: 2, gainArmor: 0.5, gainCritRate: 0.3, gainCritDamage: 0.6
       },
       "Triceratops": {
         baseHealth: 1600, baseAttack: 400, baseSpeed: 70, baseArmor: 25, baseCritRate: 3, baseCritDamage: 130,
-        gainHealth: 70, gainAttack: 20, gainSpeed: 1, gainArmor: 2, gainCritRate: 0.1, gainCritDamage: 0.4
+        gainHealth: 4, gainAttack: 1.25, gainSpeed: 1, gainArmor: 2, gainCritRate: 0.1, gainCritDamage: 0.4
       }
       // Add more species as needed
     };
@@ -169,8 +168,8 @@
       document.getElementById('baseArmor').value = p.baseArmor || 10;
       document.getElementById('baseCritRate').value = p.baseCritRate || 5;
       document.getElementById('baseCritDamage').value = p.baseCritDamage || 150;
-      document.getElementById('gainHealth').value = p.gainHealth || 50;
-      document.getElementById('gainAttack').value = p.gainAttack || 25;
+      document.getElementById('gainHealth').value = p.gainHealth || 3;
+      document.getElementById('gainAttack').value = p.gainAttack || 2.5;
       document.getElementById('gainSpeed').value = p.gainSpeed || 1;
       document.getElementById('gainArmor').value = p.gainArmor || 1;
       document.getElementById('gainCritRate').value = p.gainCritRate || 0.2;
@@ -292,6 +291,7 @@
     ];
     allInputs.forEach(input => input.addEventListener('input', updateStats));
     levelSelect.addEventListener('change', updateStats);
+
     function updateStats() {
       let totalBoosts = +boostInputs.Health.value + +boostInputs.Attack.value + +boostInputs.Speed.value;
       let boostsValid = totalBoosts <= 20;
@@ -323,11 +323,11 @@
       };
       for (let stat in baseInputs) {
         let base = +baseInputs[stat].value;
-        let gain = +gainInputs[stat].value;
+        let percentGain = +gainInputs[stat].value;
         let boost = boostInputs[stat] ? +boostInputs[stat].value : 0;
         let tp = tpInputs[stat] ? +tpInputs[stat].value : 0;
         let cap = capInputs[stat] ? +capInputs[stat].value : 120;
-        let statValue = base + gain * (lvl - 1);
+        let statValue = base * (1 + percentGain/100 * (lvl-1));
         if (["Health", "Attack", "Speed"].includes(stat)) {
           statValue += Math.round(base * 0.02 * boost);
         }
@@ -345,7 +345,6 @@
       display += "</table>";
       finalStats.innerHTML = display;
     }
-    // End calculator logic
   </script>
 </body>
 </html>
