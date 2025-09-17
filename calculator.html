@@ -9,7 +9,7 @@
     h1 { text-align: center; color: #3b82f6; }
     label { font-weight: bold; }
     .section { margin-bottom: 24px; }
-    .stats-grid, .boosts-grid, .training-grid, .gain-grid { display: grid; grid-template-columns: 130px 1fr 1fr; gap: 10px; align-items: center; }
+    .stats-grid, .boosts-grid, .training-grid, .booststat-grid, .gain-grid { display: grid; grid-template-columns: 130px 1fr 1fr; gap: 10px; align-items: center; }
     .dropdown { width: 80px; }
     input[type="number"], input[type="text"] { width: 80px; padding: 4px; border: 1px solid #ccc; border-radius: 5px; }
     .note { font-size: 0.9em; color: #888; }
@@ -61,6 +61,17 @@
       </div>
       <div class="error" id="tpError"></div>
     </div>
+    <div class="section">
+      <label>Stat Boosts <span class="note">(Each stat can have its own stat boost)</span></label>
+      <div class="booststat-grid">
+        <span>Health Stat Boost:</span><input type="number" id="statBoostHealth" value="0" min="0" max="999"><span></span>
+        <span>Attack Stat Boost:</span><input type="number" id="statBoostAttack" value="0" min="0" max="999"><span></span>
+        <span>Speed Stat Boost:</span><input type="number" id="statBoostSpeed" value="0" min="0" max="999"><span></span>
+        <span>Armor Stat Boost:</span><input type="number" id="statBoostArmor" value="0" min="0" max="999"><span></span>
+        <span>Crit Rate Stat Boost:</span><input type="number" id="statBoostCritRate" value="0" min="0" max="999"><span></span>
+        <span>Crit Damage Stat Boost:</span><input type="number" id="statBoostCritDamage" value="0" min="0" max="999"><span></span>
+      </div>
+    </div>
     <!-- Final Stats -->
     <div class="final-stats" id="finalStats"></div>
     <!-- Base Stats (moved below) -->
@@ -75,16 +86,16 @@
         <span>Crit Damage:</span><input type="number" id="baseCritDamage" value="150" min="0"><span>%</span>
       </div>
     </div>
-    <!-- Per-level Gain (moved below, now percent) -->
+    <!-- Per Stat Boost Increase (absolute values) -->
     <div class="behind-final">
-      <label>Per-level Increase (%)</label>
+      <label>Per Stat Boost Increase (absolute)</label>
       <div class="gain-grid">
-        <span>Health Gain:</span><input type="number" id="gainHealth" value="3" min="0" step="0.01"><span>%</span>
-        <span>Attack Gain:</span><input type="number" id="gainAttack" value="2.5" min="0" step="0.01"><span>%</span>
-        <span>Speed Gain:</span><input type="number" id="gainSpeed" value="1" min="0" step="0.01"><span>%</span>
-        <span>Armor Gain:</span><input type="number" id="gainArmor" value="1" min="0" step="0.01"><span>%</span>
-        <span>Crit Rate Gain:</span><input type="number" id="gainCritRate" value="0.2" min="0" step="0.01"><span>%</span>
-        <span>Crit Damage Gain:</span><input type="number" id="gainCritDamage" value="0.5" min="0" step="0.01"><span>%</span>
+        <span>Health Stat Boost Increase:</span><input type="number" id="gainHealth" value="3" min="0" step="1"><span></span>
+        <span>Attack Stat Boost Increase:</span><input type="number" id="gainAttack" value="2.5" min="0" step="0.1"><span></span>
+        <span>Speed Stat Boost Increase:</span><input type="number" id="gainSpeed" value="1" min="0" step="0.1"><span></span>
+        <span>Armor Stat Boost Increase:</span><input type="number" id="gainArmor" value="1" min="0" step="0.1"><span></span>
+        <span>Crit Rate Stat Boost Increase:</span><input type="number" id="gainCritRate" value="0.2" min="0" step="0.01"><span></span>
+        <span>Crit Damage Stat Boost Increase:</span><input type="number" id="gainCritDamage" value="0.5" min="0" step="0.01"><span></span>
       </div>
     </div>
   </div>
@@ -276,6 +287,14 @@
       CritRate: document.getElementById('capCritRate'),
       CritDamage: document.getElementById('capCritDamage')
     };
+    const statBoostInputs = {
+      Health: document.getElementById('statBoostHealth'),
+      Attack: document.getElementById('statBoostAttack'),
+      Speed: document.getElementById('statBoostSpeed'),
+      Armor: document.getElementById('statBoostArmor'),
+      CritRate: document.getElementById('statBoostCritRate'),
+      CritDamage: document.getElementById('statBoostCritDamage')
+    };
     const boostError = document.getElementById('boostError');
     const tpError = document.getElementById('tpError');
     const finalStats = document.getElementById('finalStats');
@@ -286,6 +305,7 @@
       ...Object.values(boostInputs),
       ...Object.values(tpInputs),
       ...Object.values(capInputs),
+      ...Object.values(statBoostInputs),
       levelSelect
     ];
     allInputs.forEach(input => input.addEventListener('input', updateStats));
@@ -326,6 +346,7 @@
         let boost = boostInputs[stat] ? +boostInputs[stat].value : 0;
         let tp = tpInputs[stat] ? +tpInputs[stat].value : 0;
         let cap = capInputs[stat] ? +capInputs[stat].value : 120;
+        let statBoost = statBoostInputs[stat] ? +statBoostInputs[stat].value : 0;
 
         // --- Per-level rounding after every level up (EXPO GROWTH) ---
         let statValue = base;
@@ -345,6 +366,10 @@
         } else if (stat === "CritDamage") {
           statValue += 0.2 * tp;
         }
+
+        // Apply per-stat boost increase: (statBoost * statBoostIncrease)
+        statValue += statBoost * (+gainInputs[stat].value);
+
         let valueDisplay = statValue.toFixed(2);
         if (stat === "CritRate" || stat === "CritDamage") valueDisplay += "%";
         display += `<tr><td class="stat-label">${statDisplayNames[stat]}:</td><td>${valueDisplay}</td></tr>`;
