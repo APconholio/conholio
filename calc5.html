@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dino Training Calculator</title>
+  <style>
+    :root{
+      --bg:#071425; --muted:#9fb0c8; --accent:#7c3aed; --glass: rgba(255,255,255,0.03);
+      font-family: Inter, system-ui, sans-serif; color-scheme: dark;
+    }
+    body{margin:0;background:#071425;color:#e6f0fb}
+    .wrap{max-width:1200px;margin:auto;padding:20px;display:grid;gap:20px;grid-template-columns:1fr 420px}
+    header{grid-column:1/-1}
+    h1{margin:0;font-size:20px}
+    .muted{color:var(--muted);font-size:13px}
+    .card{background:var(--glass);padding:16px;border-radius:12px}
+    label{font-size:13px;color:var(--muted)}
+    input,select{width:100%;padding:6px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:inherit}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{padding:6px;text-align:left;border-top:1px solid rgba(255,255,255,0.08)}
+    .pill{background:rgba(255,255,255,0.1);padding:3px 8px;border-radius:12px;display:inline-block}
+    button{cursor:pointer;padding:6px 12px;border-radius:8px;border:none}
+    .primary{background:var(--accent);color:#fff}
+  </style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Dino Training Calculator</h1>
+  <div class="muted">Boost and Training calculator with presets</div>
+</header>
+
+<section class="card">
+  <div class="grid-2">
+    <div>
+      <label>Dino Preset</label>
+      <select id="presetSelect"></select>
+    </div>
+    <div>
+      <label>Level (1–35)</label>
+      <input id="level" type="number" min="1" max="35" value="1"/>
+    </div>
+  </div>
+
+  <h3>Base Stats</h3>
+  <div class="grid-3">
+    <div><label>Health</label><input id="baseHealth" type="number" value="1000"></div>
+    <div><label>Attack</label><input id="baseAttack" type="number" value="200"></div>
+    <div><label>Speed</label><input id="baseSpeed" type="number" value="100"></div>
+    <div><label>Armor</label><input id="baseArmor" type="number" value="0"></div>
+    <div><label>Crit Rate %</label><input id="baseCritRate" type="number" value="5"></div>
+    <div><label>Crit Damage %</label><input id="baseCritDmg" type="number" value="50"></div>
+  </div>
+
+  <h3>Boosts</h3>
+  <div class="grid-5">
+    <div><label>Health Boosts</label><input id="boostHealth" type="number" value="0"></div>
+    <div><label>Attack Boosts</label><input id="boostAttack" type="number" value="0"></div>
+    <div><label>Speed Boosts</label><input id="boostSpeed" type="number" value="0"></div>
+    <div><label>CritRate Boosts</label><input id="boostCritRate" type="number" value="0"></div>
+    <div><label>CritDmg Boosts</label><input id="boostCritDmg" type="number" value="0"></div>
+  </div>
+  <div class="grid-5">
+    <div><label>Health/boost</label><input id="boostIncHealth" type="number" value="50"></div>
+    <div><label>Attack/boost</label><input id="boostIncAttack" type="number" value="10"></div>
+    <div><label>Speed/boost</label><input id="boostIncSpeed" type="number" value="2"></div>
+    <div><label>CritRate/boost</label><input id="boostIncCritRate" type="number" value="1"></div>
+    <div><label>CritDmg/boost</label><input id="boostIncCritDmg" type="number" value="2"></div>
+  </div>
+
+  <h3>Training Points (TP)</h3>
+  <div class="grid-5">
+    <div><label>Health TP</label><input id="tpHealth" type="number" value="0"></div>
+    <div><label>Attack TP</label><input id="tpAttack" type="number" value="0"></div>
+    <div><label>Speed TP</label><input id="tpSpeed" type="number" value="0"></div>
+    <div><label>CritRate TP</label><input id="tpCritRate" type="number" value="0"></div>
+    <div><label>CritDmg TP</label><input id="tpCritDmg" type="number" value="0"></div>
+  </div>
+  <div class="grid-5">
+    <div><label>Health/TP</label><input id="tpIncHealth" type="number" value="5"></div>
+    <div><label>Attack/TP</label><input id="tpIncAttack" type="number" value="1"></div>
+    <div><label>Speed/TP</label><input id="tpIncSpeed" type="number" value="0.2"></div>
+    <div><label>CritRate/TP</label><input id="tpIncCritRate" type="number" value="0.1"></div>
+    <div><label>CritDmg/TP</label><input id="tpIncCritDmg" type="number" value="0.2"></div>
+  </div>
+
+  <button class="primary" id="calcBtn">Calculate</button>
+</section>
+
+<aside class="card">
+  <h3>Final Stats (Current Level)</h3>
+  <table id="resultTable"><thead><tr><th>Stat</th><th>Final</th></tr></thead><tbody></tbody></table>
+  <h3>Final Stats (Level 35)</h3>
+  <table id="l35Table"><thead><tr><th>Stat</th><th>Final</th></tr></thead><tbody></tbody></table>
+</aside>
+</div>
+
+<script>
+const PRESETS = [
+  {name:"Tyrannosaurus Rex",base:{health:4500,attack:1900,speed:104,armor:0,critRate:40,critDmg:50}},
+  {name:"Velociraptor",base:{health:2200,attack:1600,speed:132,armor:0,critRate:5,critDmg:50}},
+  {name:"Stegosaurus",base:{health:4800,attack:1000,speed:116,armor:20,critRate:5,critDmg:50}}
+];
+const presetSelect=document.getElementById('presetSelect');
+PRESETS.forEach((p,i)=>{let o=document.createElement('option');o.value=i;o.textContent=p.name;presetSelect.appendChild(o);});
+presetSelect.addEventListener('change',()=>{
+  let b=PRESETS[presetSelect.value].base;
+  baseHealth.value=b.health;baseAttack.value=b.attack;baseSpeed.value=b.speed;baseArmor.value=b.armor;baseCritRate.value=b.critRate;baseCritDmg.value=b.critDmg;
+});
+function totalTP(lvl){return lvl*7;}
+function calc(lvl){
+  let base={health:+baseHealth.value,attack:+baseAttack.value,speed:+baseSpeed.value,armor:+baseArmor.value,critRate:+baseCritRate.value,critDmg:+baseCritDmg.value};
+  let boosts={health:+boostHealth.value,attack:+boostAttack.value,speed:+boostSpeed.value,critRate:+boostCritRate.value,critDmg:+boostCritDmg.value};
+  let bInc={health:+boostIncHealth.value,attack:+boostIncAttack.value,speed:+boostIncSpeed.value,critRate:+boostIncCritRate.value,critDmg:+boostIncCritDmg.value};
+  let tp={health:+tpHealth.value,attack:+tpAttack.value,speed:+tpSpeed.value,critRate:+tpCritRate.value,critDmg:+tpCritDmg.value};
+  let tInc={health:+tpIncHealth.value,attack:+tpIncAttack.value,speed:+tpIncSpeed.value,critRate:+tpIncCritRate.value,critDmg:+tpIncCritDmg.value};
+  let available=totalTP(lvl);
+  let manualSum=tp.health+tp.attack+tp.speed+tp.critRate+tp.critDmg;
+  if(manualSum>available){
+    let ratio=available/manualSum;
+    for(let k in tp)tp[k]=Math.floor(tp[k]*ratio);
+  }
+  let autoLeft=available-(tp.health+tp.attack+tp.speed+tp.critRate+tp.critDmg);
+  let order=["health","attack","speed","critRate","critDmg"];
+  while(autoLeft>0){
+    for(let k of order){tp[k]++;autoLeft--;if(autoLeft<=0)break;}
+  }
+  let final={};
+  final.health=base.health+boosts.health*bInc.health+tp.health*tInc.health;
+  final.attack=base.attack+boosts.attack*bInc.attack+tp.attack*tInc.attack;
+  final.speed=base.speed+boosts.speed*bInc.speed+tp.speed*tInc.speed;
+  final.armor=base.armor;
+  final.critRate=base.critRate+boosts.critRate*bInc.critRate+tp.critRate*tInc.critRate;
+  final.critDmg=base.critDmg+boosts.critDmg*bInc.critDmg+tp.critDmg*tInc.critDmg;
+  return final;
+}
+function render(tbl,res){
+  let b=tbl.querySelector('tbody');b.innerHTML="";
+  for(let [k,v] of Object.entries(res)){
+    let tr=document.createElement('tr');tr.innerHTML=`<td>${k}</td><td>${v.toFixed(2)}${(k.includes("crit")||k=="critRate"||k=="critDmg")?"%":""}</td>`;b.appendChild(tr);
+  }
+}
+document.getElementById('calcBtn').addEventListener('click',()=>{
+  let lvl=+level.value;
+  render(resultTable,calc(lvl));
+  render(l35Table,calc(35));
+});
+</script>
+</body>
+</html>
