@@ -1,0 +1,52 @@
+<!doctype html>
+calculate();
+}
+
+
+// --------------------------- load/save UI handlers ---------------------------
+function loadPreset(p){
+qs('#profileName').value = p.name;
+inputs.baseHealth.value = p.stats.health; inputs.baseAttack.value = p.stats.attack; inputs.baseSpeed.value = p.stats.speed; inputs.baseArmor.value = p.stats.armor; inputs.baseCritRate.value = p.stats.critRate; inputs.baseCritDmg.value = p.stats.critDmg;
+// reset boosts/tp
+inputs.boostHealth.value=0; inputs.boostAttack.value=0; inputs.boostSpeed.value=0;
+inputs.tpHealth.value=0; inputs.tpAttack.value=0; inputs.tpSpeed.value=0;
+calculate();
+}
+
+
+// init
+function init(){
+renderPresetButtons(); renderProfileSelect();
+
+
+// bind events
+calcBtn.addEventListener('click',()=>{ calculate(); });
+resetBtn.addEventListener('click',()=>{ if(confirm('Reset boosts/training to zero for current preset?')){ inputs.boostHealth.value=0; inputs.boostAttack.value=0; inputs.boostSpeed.value=0; inputs.tpHealth.value=0; inputs.tpAttack.value=0; inputs.tpSpeed.value=0; calculate(); } });
+saveBtn2.addEventListener('click',()=>{ const data = collectAllInputs(); saveProfileToStorage(data.meta.name || ('Profile_'+Date.now()), data); });
+deleteBtn.addEventListener('click',()=>{ const name = profileSelect.value; if(!name) return alert('Select a saved profile in the dropdown first.'); if(confirm('Delete profile '+name+'?')) deleteProfileFromStorage(name); });
+loadProfileBtn.addEventListener('click',()=>{ const name=profileSelect.value; if(!name) return alert('Select a profile first.'); const data = loadProfileFromStorage(name); if(!data) return alert('Profile not found'); applyDataToInputs(data); });
+saveProfileBtn.addEventListener('click',()=>{ const data = collectAllInputs(); const defaultName = data.meta.name || ('Profile_'+Date.now()); saveProfileToStorage(defaultName, data); });
+qs('#exportBtn').addEventListener('click', exportJSON);
+qs('#importBtn').addEventListener('click', importJSON);
+qs('#loadDefaultBtn').addEventListener('click',()=>{ if(confirm('Load default demo presets into the preset list? This will not overwrite saved profiles.')){ presets.forEach(p=>{}); renderPresetButtons(); alert('Presets available in the left.'); }});
+qs('#clearProfilesBtn').addEventListener('click',()=>{ if(confirm('Clear all saved profiles from localStorage?')){ localStorage.removeItem('dino_profiles'); renderProfileSelect(); alert('Cleared saved profiles.'); }});
+
+
+// auto-calc when inputs change lightly
+document.querySelectorAll('input').forEach(inp=>{ inp.addEventListener('change', ()=>{ /* don't spam but update meta display */ currentName.textContent = qs('#profileName').value || 'Custom'; }); });
+
+
+// initial render
+loadPreset(presets[0]); calculate();
+}
+
+
+// references to buttons that were declared later
+const saveBtn2 = qs('#saveBtn2');
+const deleteBtn = qs('#deleteBtn');
+
+
+init();
+</script>
+</body>
+</html>
