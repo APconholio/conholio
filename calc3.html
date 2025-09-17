@@ -1,52 +1,545 @@
 <!doctype html>
-calculate();
-}
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dino Training Calculator</title>
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --muted:#9aa4b2; --accent:#7c3aed; --accent-2:#06b6d4; --glass: rgba(255,255,255,0.03);
+      --success:#10b981; --danger:#ef4444; --card-radius:14px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;background:linear-gradient(180deg,#071023 0%, #071525 60%);color:#e6eef6;
+      -webkit-font-smoothing:antialiased; padding:28px; font-size:14px;
+    }
+    .app{max-width:1150px;margin:0 auto;display:grid;grid-template-columns:1fr 420px;gap:20px}
+    header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+    h1{font-size:18px;margin:0}
+    .sub{color:var(--muted);font-size:13px}
 
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));border-radius:var(--card-radius);padding:18px;box-shadow:0 6px 30px rgba(2,6,23,0.6)}
+    .controls{display:flex;flex-direction:column;gap:12px}
+    .row{display:flex;gap:12px;align-items:center}
+    .col{display:flex;flex-direction:column;gap:6px}
+    label{color:var(--muted);font-size:12px}
+    input[type=number], input[type=text], select{background:var(--glass);border:1px solid rgba(255,255,255,0.04);padding:8px;border-radius:10px;color:inherit;width:100%;outline:none}
+    input[type=range]{width:100%}
+    .half{flex:1}
+    .ter{width:120px}
 
-// --------------------------- load/save UI handlers ---------------------------
-function loadPreset(p){
-qs('#profileName').value = p.name;
-inputs.baseHealth.value = p.stats.health; inputs.baseAttack.value = p.stats.attack; inputs.baseSpeed.value = p.stats.speed; inputs.baseArmor.value = p.stats.armor; inputs.baseCritRate.value = p.stats.critRate; inputs.baseCritDmg.value = p.stats.critDmg;
-// reset boosts/tp
-inputs.boostHealth.value=0; inputs.boostAttack.value=0; inputs.boostSpeed.value=0;
-inputs.tpHealth.value=0; inputs.tpAttack.value=0; inputs.tpSpeed.value=0;
-calculate();
-}
+    .presets{display:flex;gap:8px;flex-wrap:wrap}
+    button{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));color:inherit;border:1px solid rgba(255,255,255,0.04);padding:8px 10px;border-radius:10px;cursor:pointer}
+    .primary{background:linear-gradient(90deg,var(--accent),#4f46e5);border:none;color:white}
+    .quiet{background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--muted)}
 
+    .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    table{width:100%;border-collapse:collapse}
+    thead th{font-size:12px;color:var(--muted);text-align:left;padding:8px}
+    tbody td{padding:10px;border-top:1px dashed rgba(255,255,255,0.03)}
 
-// init
-function init(){
-renderPresetButtons(); renderProfileSelect();
+    .small{font-size:12px;color:var(--muted)}
+    .controls-scroll{max-height:72vh;overflow:auto;padding-right:4px}
+    .profile-row{display:flex;gap:8px;align-items:center}
+    .flex{display:flex;gap:8px;align-items:center}
+    .badge{background:rgba(255,255,255,0.04);padding:6px 8px;border-radius:8px;font-weight:600}
+    footer{grid-column:1/-1;margin-top:8px;color:var(--muted);font-size:12px;text-align:center}
 
+    /* responsive */
+    @media(max-width:980px){.app{grid-template-columns:1fr;padding:8px} .ter{width:100%}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>Dino Training Calculator</h1>
+        <div class="sub">Single-file HTML — enter base stats, apply boosts & training points. Save/load profiles & presets.</div>
+      </div>
+      <div class="flex">
+        <div class="small">Profiles</div>
+        <select id="profileSelect"></select>
+        <button id="loadProfileBtn" class="quiet">Load</button>
+        <button id="saveProfileBtn" class="primary">Save</button>
+      </div>
+    </header>
 
-// bind events
-calcBtn.addEventListener('click',()=>{ calculate(); });
-resetBtn.addEventListener('click',()=>{ if(confirm('Reset boosts/training to zero for current preset?')){ inputs.boostHealth.value=0; inputs.boostAttack.value=0; inputs.boostSpeed.value=0; inputs.tpHealth.value=0; inputs.tpAttack.value=0; inputs.tpSpeed.value=0; calculate(); } });
-saveBtn2.addEventListener('click',()=>{ const data = collectAllInputs(); saveProfileToStorage(data.meta.name || ('Profile_'+Date.now()), data); });
-deleteBtn.addEventListener('click',()=>{ const name = profileSelect.value; if(!name) return alert('Select a saved profile in the dropdown first.'); if(confirm('Delete profile '+name+'?')) deleteProfileFromStorage(name); });
-loadProfileBtn.addEventListener('click',()=>{ const name=profileSelect.value; if(!name) return alert('Select a profile first.'); const data = loadProfileFromStorage(name); if(!data) return alert('Profile not found'); applyDataToInputs(data); });
-saveProfileBtn.addEventListener('click',()=>{ const data = collectAllInputs(); const defaultName = data.meta.name || ('Profile_'+Date.now()); saveProfileToStorage(defaultName, data); });
-qs('#exportBtn').addEventListener('click', exportJSON);
-qs('#importBtn').addEventListener('click', importJSON);
-qs('#loadDefaultBtn').addEventListener('click',()=>{ if(confirm('Load default demo presets into the preset list? This will not overwrite saved profiles.')){ presets.forEach(p=>{}); renderPresetButtons(); alert('Presets available in the left.'); }});
-qs('#clearProfilesBtn').addEventListener('click',()=>{ if(confirm('Clear all saved profiles from localStorage?')){ localStorage.removeItem('dino_profiles'); renderProfileSelect(); alert('Cleared saved profiles.'); }});
+    <!-- left: inputs -->
+    <section class="card">
+      <div class="controls controls-scroll">
+        <div class="row">
+          <div class="col half">
+            <label>Preset dinos</label>
+            <div class="presets" id="presetButtons"></div>
+          </div>
+          <div class="col ter">
+            <label>Level (meta / informational)</label>
+            <input type="number" id="level" min="1" max="999" value="1" />
+          </div>
+        </div>
 
+        <div class="row">
+          <div class="col half">
+            <label>Base Stats</label>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+              <div>
+                <label>Health</label>
+                <input type="number" id="baseHealth" step="1" value="1000" />
+              </div>
+              <div>
+                <label>Attack</label>
+                <input type="number" id="baseAttack" step="1" value="200" />
+              </div>
+              <div>
+                <label>Speed</label>
+                <input type="number" id="baseSpeed" step="1" value="100" />
+              </div>
+              <div>
+                <label>Armor</label>
+                <input type="number" id="baseArmor" step="1" value="0" />
+              </div>
+              <div>
+                <label>Crit Rate (%)</label>
+                <input type="number" id="baseCritRate" step="0.1" value="5" />
+              </div>
+              <div>
+                <label>Crit Damage (%)</label>
+                <input type="number" id="baseCritDmg" step="0.1" value="50" />
+              </div>
+            </div>
+          </div>
 
-// auto-calc when inputs change lightly
-document.querySelectorAll('input').forEach(inp=>{ inp.addEventListener('change', ()=>{ /* don't spam but update meta display */ currentName.textContent = qs('#profileName').value || 'Custom'; }); });
+          <div class="col ter">
+            <label>Training points caps (per stat)</label>
+            <div style="display:grid;gap:8px">
+              <div class="small">Set maximum training points allowed per stat (default 120)</div>
+              <input type="number" id="tpCapHealth" value="120" min="0" />
+              <input type="number" id="tpCapAttack" value="120" min="0" />
+              <input type="number" id="tpCapSpeed" value="120" min="0" />
+            </div>
+          </div>
+        </div>
 
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.03)" />
 
-// initial render
-loadPreset(presets[0]); calculate();
-}
+        <div>
+          <label>Stat Boosts (counts)</label>
+          <div class="small">Total boosts across Health, Attack, Speed are limited to <strong>20</strong>. Each stat has a count and a per-boost absolute increase below.</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
+            <div>
+              <label>Health boosts (count)</label>
+              <input type="number" id="boostHealth" value="0" min="0" max="20" />
+            </div>
+            <div>
+              <label>Attack boosts (count)</label>
+              <input type="number" id="boostAttack" value="0" min="0" max="20" />
+            </div>
+            <div>
+              <label>Speed boosts (count)</label>
+              <input type="number" id="boostSpeed" value="0" min="0" max="20" />
+            </div>
+          </div>
 
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
+            <div>
+              <label>Health per-boost increase (absolute)</label>
+              <input type="number" id="boostIncHealth" value="50" step="1" />
+            </div>
+            <div>
+              <label>Attack per-boost increase (absolute)</label>
+              <input type="number" id="boostIncAttack" value="10" step="1" />
+            </div>
+            <div>
+              <label>Speed per-boost increase (absolute)</label>
+              <input type="number" id="boostIncSpeed" value="2" step="0.1" />
+            </div>
+          </div>
+        </div>
 
-// references to buttons that were declared later
-const saveBtn2 = qs('#saveBtn2');
-const deleteBtn = qs('#deleteBtn');
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.03)" />
 
+        <div>
+          <label>Training Points (assign up to cap per stat)</label>
+          <div class="small">After applying stat boosts, each training point adds an absolute amount ("trainingPointIncrease") for that stat. Enter the number of training points to spend on each stat.</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
+            <div>
+              <label>Health TP</label>
+              <input type="number" id="tpHealth" value="0" min="0" max="120" />
+            </div>
+            <div>
+              <label>Attack TP</label>
+              <input type="number" id="tpAttack" value="0" min="0" max="120" />
+            </div>
+            <div>
+              <label>Speed TP</label>
+              <input type="number" id="tpSpeed" value="0" min="0" max="120" />
+            </div>
+          </div>
 
-init();
-</script>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
+            <div>
+              <label>Health TP increase (per point, absolute)</label>
+              <input type="number" id="tpIncHealth" value="5" step="0.1" />
+            </div>
+            <div>
+              <label>Attack TP increase (per point, absolute)</label>
+              <input type="number" id="tpIncAttack" value="1" step="0.1" />
+            </div>
+            <div>
+              <label>Speed TP increase (per point, absolute)</label>
+              <input type="number" id="tpIncSpeed" value="0.2" step="0.01" />
+            </div>
+          </div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.03)" />
+
+        <div>
+          <label>Other stats (no boosts applied by training)</label>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px">
+            <div>
+              <label>Armor increase (flat)</label>
+              <input type="number" id="armorInc" value="0" step="0.1" />
+            </div>
+            <div>
+              <label>Crit Rate increase (absolute %)</label>
+              <input type="number" id="critRateInc" value="0" step="0.1" />
+            </div>
+            <div>
+              <label>Crit Damage increase (absolute %)</label>
+              <input type="number" id="critDmgInc" value="0" step="0.1" />
+            </div>
+            <div></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center;margin-top:12px">
+          <button id="calcBtn" class="primary">Calculate</button>
+          <button id="resetBtn" class="quiet">Reset to preset</button>
+          <button id="exportBtn" class="quiet">Export JSON</button>
+          <button id="importBtn" class="quiet">Import JSON</button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- right: results + presets + save/load -->
+    <aside class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div>
+          <div class="badge" id="currentName">Custom</div>
+          <div class="small" id="currentMeta">Level: 1 • Total boosts used: 0</div>
+        </div>
+        <div style="text-align:right">
+          <div class="small">Quick actions</div>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button id="loadDefaultBtn" class="quiet">Load defaults</button>
+            <button id="clearProfilesBtn" class="quiet">Clear saved</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <table>
+          <thead>
+            <tr><th>Stat</th><th>Base</th><th>Boosts</th><th>Training</th><th>Final</th></tr>
+          </thead>
+          <tbody id="resultTable">
+            <!-- rows inserted by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <hr style="border:none;border-top:1px solid rgba(255,255,255,0.03);margin:10px 0" />
+      <div style="display:flex;gap:8px;flex-direction:column">
+        <div class="small">Profile name</div>
+        <input type="text" id="profileName" placeholder="e.g. " />
+        <div style="display:flex;gap:8px">
+          <button id="saveBtn2" class="primary">Save profile</button>
+          <button id="deleteBtn" class="quiet">Delete selected</button>
+        </div>
+      </div>
+
+    </aside>
+
+    <footer class="sub">Tips: Adjust TP caps to change maximum allowed training points. Crit Rate & Crit Damage are shown as percentages.</footer>
+  </div>
+
+  <script>
+    // --------------------------- Data & presets ---------------------------
+    const presets = [
+      {name:'T-Rex', stats:{health:2400,attack:350,speed:105,armor:10,critRate:5,critDmg:50}},
+      {name:'Triceratops', stats:{health:3000,attack:180,speed:95,armor:30,critRate:3,critDmg:50}},
+      {name:'Velociraptor', stats:{health:1200,attack:260,speed:140,armor:0,critRate:8,critDmg:60}},
+      {name:'Stegosaurus', stats:{health:2800,attack:120,speed:70,armor:40,critRate:2,critDmg:50}},
+      {name:'Giga', stats:{health:4000,attack:480,speed:105,armor:5,critRate:4,critDmg:50}}
+    ];
+
+    // --------------------------- DOM refs ---------------------------
+    const qs = s=>document.querySelector(s);
+    const presetButtons = qs('#presetButtons');
+    const profileSelect = qs('#profileSelect');
+    const loadProfileBtn = qs('#loadProfileBtn');
+    const saveProfileBtn = qs('#saveProfileBtn');
+    const calcBtn = qs('#calcBtn');
+    const resultTable = qs('#resultTable');
+    const currentName = qs('#currentName');
+    const currentMeta = qs('#currentMeta');
+    const resetBtn = qs('#resetBtn');
+    const levelInput = qs('#level');
+
+    // input refs
+    const inputs = {
+      baseHealth: qs('#baseHealth'), baseAttack: qs('#baseAttack'), baseSpeed: qs('#baseSpeed'), baseArmor: qs('#baseArmor'), baseCritRate: qs('#baseCritRate'), baseCritDmg: qs('#baseCritDmg'),
+      tpCapHealth: qs('#tpCapHealth'), tpCapAttack: qs('#tpCapAttack'), tpCapSpeed: qs('#tpCapSpeed'),
+      boostHealth: qs('#boostHealth'), boostAttack: qs('#boostAttack'), boostSpeed: qs('#boostSpeed'),
+      boostIncHealth: qs('#boostIncHealth'), boostIncAttack: qs('#boostIncAttack'), boostIncSpeed: qs('#boostIncSpeed'),
+      tpHealth: qs('#tpHealth'), tpAttack: qs('#tpAttack'), tpSpeed: qs('#tpSpeed'),
+      tpIncHealth: qs('#tpIncHealth'), tpIncAttack: qs('#tpIncAttack'), tpIncSpeed: qs('#tpIncSpeed'),
+      armorInc: qs('#armorInc'), critRateInc: qs('#critRateInc'), critDmgInc: qs('#critDmgInc'),
+      profileName: qs('#profileName')
+    };
+
+    // --------------------------- helpers ---------------------------
+    function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
+    function toNum(el,def=0){const v=parseFloat(el.value);return isNaN(v)?def:v}
+
+    // populate presets
+    function renderPresetButtons(){
+      presetButtons.innerHTML='';
+      presets.forEach(p=>{
+        const b=document.createElement('button');b.textContent=p.name;b.className='quiet';
+        b.addEventListener('click',()=>loadPreset(p));presetButtons.appendChild(b);
+      })
+    }
+
+    // --------------------------- calculation ---------------------------
+    function calculate(){
+      // read base
+      const base = {
+        health: toNum(inputs.baseHealth,0), attack: toNum(inputs.baseAttack,0), speed: toNum(inputs.baseSpeed,0), armor: toNum(inputs.baseArmor,0), critRate: toNum(inputs.baseCritRate,0), critDmg: toNum(inputs.baseCritDmg,0)
+      };
+
+      // boosts counts
+      let boostCounts = {health: Math.floor(toNum(inputs.boostHealth,0)), attack: Math.floor(toNum(inputs.boostAttack,0)), speed: Math.floor(toNum(inputs.boostSpeed,0)) };
+      // enforce non-negative
+      boostCounts.health = Math.max(0, boostCounts.health);
+      boostCounts.attack = Math.max(0, boostCounts.attack);
+      boostCounts.speed = Math.max(0, boostCounts.speed);
+
+      // ensure total boosts <=20
+      const totalBoosts = boostCounts.health + boostCounts.attack + boostCounts.speed;
+      if(totalBoosts > 20){
+        // proportionally reduce extras by trimming from last changed fields in simple order: speed, attack, health
+        let excess = totalBoosts - 20;
+        const order = ['speed','attack','health'];
+        for(const k of order){
+          if(excess<=0) break;
+          const reducible = Math.min(boostCounts[k], excess);
+          boostCounts[k] -= reducible; excess -= reducible;
+        }
+        alert('Total stat boost counts exceeded 20 — trimmed from Speed->Attack->Health until total = 20.');
+      }
+
+      // per-boost increases (absolute)
+      const boostInc = {health: toNum(inputs.boostIncHealth,0), attack: toNum(inputs.boostIncAttack,0), speed: toNum(inputs.boostIncSpeed,0)};
+
+      // training points with caps
+      const tpCaps = {health: Math.max(0,toNum(inputs.tpCapHealth,120)), attack: Math.max(0,toNum(inputs.tpCapAttack,120)), speed: Math.max(0,toNum(inputs.tpCapSpeed,120)) };
+      let tp = {health: Math.floor(toNum(inputs.tpHealth,0)), attack: Math.floor(toNum(inputs.tpAttack,0)), speed: Math.floor(toNum(inputs.tpSpeed,0)) };
+      // clamp to caps
+      tp.health = clamp(tp.health,0,tpCaps.health); tp.attack = clamp(tp.attack,0,tpCaps.attack); tp.speed = clamp(tp.speed,0,tpCaps.speed);
+
+      const tpInc = {health: toNum(inputs.tpIncHealth,0), attack: toNum(inputs.tpIncAttack,0), speed: toNum(inputs.tpIncSpeed,0)};
+
+      // armor/crit increments
+      const armorInc = toNum(inputs.armorInc,0);
+      const critRateInc = toNum(inputs.critRateInc,0);
+      const critDmgInc = toNum(inputs.critDmgInc,0);
+
+      // compute intermediate after stat boosts
+      const afterBoosts = {
+        health: base.health + boostCounts.health * boostInc.health,
+        attack: base.attack + boostCounts.attack * boostInc.attack,
+        speed: base.speed + boostCounts.speed * boostInc.speed,
+        armor: base.armor + armorInc,
+        critRate: base.critRate + critRateInc,
+        critDmg: base.critDmg + critDmgInc
+      };
+
+      // apply training points: final_stat += trainingPointBoost * trainingPointIncrease
+      const final = {
+        health: afterBoosts.health + tp.health * tpInc.health,
+        attack: afterBoosts.attack + tp.attack * tpInc.attack,
+        speed: afterBoosts.speed + tp.speed * tpInc.speed,
+        armor: afterBoosts.armor, critRate: afterBoosts.critRate, critDmg: afterBoosts.critDmg
+      };
+
+      // update UI table
+      resultTable.innerHTML = '';
+      const rows = [
+        {k:'health', label:'Health', unit:''},
+        {k:'attack', label:'Attack', unit:''},
+        {k:'speed', label:'Speed', unit:''},
+        {k:'armor', label:'Armor', unit:''},
+        {k:'critRate', label:'Crit Rate', unit:'%'} ,
+        {k:'critDmg', label:'Crit Damage', unit:'%'}
+      ];
+      rows.forEach(r=>{
+        const tr = document.createElement('tr');
+        const baseVal = (r.k in base)? base[r.k] : (r.k==='armor'? base.armor : 0);
+        const boostVal = (()=>{
+          if(['health','attack','speed'].includes(r.k)){
+            const c = boostCounts[r.k]; const inc = boostInc[r.k]; return c*inc;
+          }
+          if(r.k==='armor') return armorInc;
+          if(r.k==='critRate') return critRateInc;
+          if(r.k==='critDmg') return critDmgInc;
+          return 0;
+        })();
+        const tpVal = (()=>{
+          if(['health','attack','speed'].includes(r.k)){
+            return tp[r.k] * tpInc[r.k];
+          }
+          return '';
+        })();
+        const finalVal = final[r.k];
+        tr.innerHTML = `
+          <td style="font-weight:600">${r.label}</td>
+          <td>${formatStat(baseVal,r.unit)}</td>
+          <td>${formatStat(boostVal,r.unit)}${(r.k==='health'||r.k==='attack'||r.k==='speed')?`<div class="small">(count: ${boostCounts[r.k] || 0})</div>`:''}</td>
+          <td>${tpVal!==''?formatStat(tpVal,r.unit):''}${(r.k==='health'||r.k==='attack'||r.k==='speed')?`<div class="small">(tp: ${tp[r.k] || 0}, inc: ${tpInc[r.k]})</div>`:''}</td>
+          <td>${formatStat(finalVal,r.unit)}</td>
+        `;
+        resultTable.appendChild(tr);
+      });
+
+      // set meta
+      currentName.textContent = (qs('#profileName').value.trim() || 'Custom');
+      currentMeta.textContent = `Level: ${levelInput.value} • Total boosts used: ${boostCounts.health+boostCounts.attack+boostCounts.speed}`;
+
+      // return result object
+      return {base, boostCounts, boostInc, tpCaps, tp, tpInc, afterBoosts, final};
+    }
+
+    function formatStat(v,unit){
+      if(v === '' || v === null || v === undefined) return '';
+      if(isNaN(v)) return '-';
+      if(unit === '%') return (Math.round(v*1000)/1000) + '%';
+      // pretty number for large ints
+      if(Math.abs(v) >= 1000) return Math.round(v).toLocaleString();
+      // show at most 3 decimals for floats
+      if(Math.abs(v - Math.round(v)) > 0.0001) return Math.round(v*1000)/1000;
+      return Math.round(v);
+    }
+
+    // --------------------------- profile storage ---------------------------
+    function saveProfileToStorage(name, data){
+      if(!name) {alert('Please give the profile a name before saving.'); return;}
+      const all = JSON.parse(localStorage.getItem('dino_profiles') || '{}');
+      all[name]=data; localStorage.setItem('dino_profiles', JSON.stringify(all));
+      renderProfileSelect();
+      alert('Saved profile: '+name);
+    }
+    function loadProfileFromStorage(name){
+      const all = JSON.parse(localStorage.getItem('dino_profiles') || '{}');
+      return all[name] || null;
+    }
+    function deleteProfileFromStorage(name){
+      const all = JSON.parse(localStorage.getItem('dino_profiles') || '{}');
+      if(all[name]){ delete all[name]; localStorage.setItem('dino_profiles', JSON.stringify(all)); renderProfileSelect(); alert('Deleted: '+name); }
+    }
+
+    function renderProfileSelect(){
+      profileSelect.innerHTML='';
+      const all = JSON.parse(localStorage.getItem('dino_profiles') || '{}');
+      const keys = Object.keys(all);
+      const opt = document.createElement('option'); opt.value=''; opt.textContent='-- select --'; profileSelect.appendChild(opt);
+      keys.forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=k; profileSelect.appendChild(o); });
+    }
+
+    // --------------------------- import/export ---------------------------
+    function exportJSON(){
+      const data = collectAllInputs();
+      const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='dino_profile.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }
+    function importJSON(){
+      const input = document.createElement('input'); input.type='file'; input.accept='application/json';
+      input.onchange = e=>{ const f = e.target.files[0]; if(!f) return; const reader=new FileReader(); reader.onload = ev=>{
+        try{ const parsed=JSON.parse(ev.target.result); applyDataToInputs(parsed); alert('Imported profile into inputs (not saved). Press "Save profile" to persist.'); }catch(err){ alert('Invalid JSON file'); }
+      }; reader.readAsText(f);
+      };
+      input.click();
+    }
+
+    // collect all inputs into an object
+    function collectAllInputs(){
+      return {
+        meta:{name:qs('#profileName').value||'Custom', level:toNum(levelInput,1)},
+        base:{health:toNum(inputs.baseHealth), attack:toNum(inputs.baseAttack), speed:toNum(inputs.baseSpeed), armor:toNum(inputs.baseArmor), critRate:toNum(inputs.baseCritRate), critDmg:toNum(inputs.baseCritDmg)},
+        tpCaps:{health:toNum(inputs.tpCapHealth), attack:toNum(inputs.tpCapAttack), speed:toNum(inputs.tpCapSpeed)},
+        boosts:{counts:{health:toNum(inputs.boostHealth), attack:toNum(inputs.boostAttack), speed:toNum(inputs.boostSpeed)}, perBoost:{health:toNum(inputs.boostIncHealth), attack:toNum(inputs.boostIncAttack), speed:toNum(inputs.boostIncSpeed)} },
+        tp:{points:{health:toNum(inputs.tpHealth), attack:toNum(inputs.tpAttack), speed:toNum(inputs.tpSpeed)}, perPoint:{health:toNum(inputs.tpIncHealth), attack:toNum(inputs.tpIncAttack), speed:toNum(inputs.tpIncSpeed)} },
+        extras:{armorInc:toNum(inputs.armorInc), critRateInc:toNum(inputs.critRateInc), critDmgInc:toNum(inputs.critDmgInc)}
+      };
+    }
+
+    function applyDataToInputs(data){
+      if(!data) return;
+      if(data.meta){ qs('#profileName').value = data.meta.name || ''; levelInput.value = data.meta.level || 1; }
+      if(data.base){ inputs.baseHealth.value=data.base.health||0; inputs.baseAttack.value=data.base.attack||0; inputs.baseSpeed.value=data.base.speed||0; inputs.baseArmor.value=data.base.armor||0; inputs.baseCritRate.value=data.base.critRate||0; inputs.baseCritDmg.value=data.base.critDmg||0; }
+      if(data.tpCaps){ inputs.tpCapHealth.value=data.tpCaps.health||120; inputs.tpCapAttack.value=data.tpCaps.attack||120; inputs.tpCapSpeed.value=data.tpCaps.speed||120; }
+      if(data.boosts){ inputs.boostHealth.value = data.boosts.counts.health||0; inputs.boostAttack.value = data.boosts.counts.attack||0; inputs.boostSpeed.value = data.boosts.counts.speed||0; inputs.boostIncHealth.value = data.boosts.perBoost.health||0; inputs.boostIncAttack.value = data.boosts.perBoost.attack||0; inputs.boostIncSpeed.value = data.boosts.perBoost.speed||0; }
+      if(data.tp){ inputs.tpHealth.value = data.tp.points.health||0; inputs.tpAttack.value = data.tp.points.attack||0; inputs.tpSpeed.value = data.tp.points.speed||0; inputs.tpIncHealth.value = data.tp.perPoint.health||0; inputs.tpIncAttack.value = data.tp.perPoint.attack||0; inputs.tpIncSpeed.value = data.tp.perPoint.speed||0; }
+      if(data.extras){ inputs.armorInc.value = data.extras.armorInc||0; inputs.critRateInc.value = data.extras.critRateInc||0; inputs.critDmgInc.value = data.extras.critDmgInc||0; }
+
+      // automatically calculate
+      calculate();
+    }
+
+    // --------------------------- load/save UI handlers ---------------------------
+    function loadPreset(p){
+      qs('#profileName').value = p.name;
+      inputs.baseHealth.value = p.stats.health; inputs.baseAttack.value = p.stats.attack; inputs.baseSpeed.value = p.stats.speed; inputs.baseArmor.value = p.stats.armor; inputs.baseCritRate.value = p.stats.critRate; inputs.baseCritDmg.value = p.stats.critDmg;
+      // reset boosts/tp
+      inputs.boostHealth.value=0; inputs.boostAttack.value=0; inputs.boostSpeed.value=0;
+      inputs.tpHealth.value=0; inputs.tpAttack.value=0; inputs.tpSpeed.value=0;
+      calculate();
+    }
+
+    // init
+    function init(){
+      renderPresetButtons(); renderProfileSelect();
+
+      // bind events
+      calcBtn.addEventListener('click',()=>{ calculate(); });
+      resetBtn.addEventListener('click',()=>{ if(confirm('Reset boosts/training to zero for current preset?')){ inputs.boostHealth.value=0; inputs.boostAttack.value=0; inputs.boostSpeed.value=0; inputs.tpHealth.value=0; inputs.tpAttack.value=0; inputs.tpSpeed.value=0; calculate(); } });
+      saveBtn2.addEventListener('click',()=>{ const data = collectAllInputs(); saveProfileToStorage(data.meta.name || ('Profile_'+Date.now()), data); });
+      deleteBtn.addEventListener('click',()=>{ const name = profileSelect.value; if(!name) return alert('Select a saved profile in the dropdown first.'); if(confirm('Delete profile '+name+'?')) deleteProfileFromStorage(name); });
+      loadProfileBtn.addEventListener('click',()=>{ const name=profileSelect.value; if(!name) return alert('Select a profile first.'); const data = loadProfileFromStorage(name); if(!data) return alert('Profile not found'); applyDataToInputs(data); });
+      saveProfileBtn.addEventListener('click',()=>{ const data = collectAllInputs(); const defaultName = data.meta.name || ('Profile_'+Date.now()); saveProfileToStorage(defaultName, data); });
+      qs('#exportBtn').addEventListener('click', exportJSON);
+      qs('#importBtn').addEventListener('click', importJSON);
+      qs('#loadDefaultBtn').addEventListener('click',()=>{ if(confirm('Load default demo presets into the preset list? This will not overwrite saved profiles.')){ presets.forEach(p=>{}); renderPresetButtons(); alert('Presets available in the left.'); }});
+      qs('#clearProfilesBtn').addEventListener('click',()=>{ if(confirm('Clear all saved profiles from localStorage?')){ localStorage.removeItem('dino_profiles'); renderProfileSelect(); alert('Cleared saved profiles.'); }});
+
+      // auto-calc when inputs change lightly
+      document.querySelectorAll('input').forEach(inp=>{ inp.addEventListener('change', ()=>{ /* don't spam but update meta display */ currentName.textContent = qs('#profileName').value || 'Custom'; }); });
+
+      // initial render
+      loadPreset(presets[0]); calculate();
+    }
+
+    // references to buttons that were declared later
+    const saveBtn2 = qs('#saveBtn2');
+    const deleteBtn = qs('#deleteBtn');
+
+    init();
+  </script>
 </body>
 </html>
