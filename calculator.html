@@ -1,26 +1,357 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Calculator</title>
+  <meta charset="UTF-8">
+  <title>Dino Training Calculator</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f6fa; margin: 0; padding: 0; }
+    .container { max-width: 700px; margin: 20px auto; background: #fff; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.09); padding: 30px; }
+    h1 { text-align: center; color: #3b82f6; }
+    label { font-weight: bold; }
+    .section { margin-bottom: 24px; }
+    .stats-grid, .boosts-grid, .training-grid, .gain-grid { display: grid; grid-template-columns: 130px 1fr 1fr; gap: 10px; align-items: center; }
+    .dropdown { width: 80px; }
+    input[type="number"], input[type="text"] { width: 80px; padding: 4px; border: 1px solid #ccc; border-radius: 5px; }
+    .note { font-size: 0.9em; color: #888; }
+    .final-stats { background: #f0f4fa; border-radius: 8px; padding: 18px; margin-top: 12px; }
+    .stat-label { font-weight: bold; }
+    .error { color: #e11d48; font-size: 0.95em; }
+    .profile-controls { margin-bottom: 18px; }
+    #dinoList, #defaultDinoList { width: 180px; }
+    .behind-final { background: #f7fafc; border-radius: 8px; padding: 16px 18px; margin-top: 18px; }
+  </style>
 </head>
 <body>
-    <h1>Character Stat Calculator</h1>
-    <script>
-        function calculateStats(level) {
-            let baseStats = { strength: 10, agility: 10, intelligence: 10 };
-            let statGains = { strength: 2.5, agility: 1.5, intelligence: 1.0 };
+  <div class="container">
+    <h1>Dino Training Calculator</h1>
+    <div class="profile-controls">
+      <label for="defaultDinoList">Default Dino:</label>
+      <select id="defaultDinoList"></select>
+      <span style="margin:0 12px;">|</span>
+      <input type="text" id="dinoName" placeholder="Custom Profile Name" />
+      <button id="saveProfileBtn">Save Profile</button>
+      <button id="newProfileBtn">New Profile</button>
+      <select id="dinoList"></select>
+      <button id="loadProfileBtn">Load</button>
+      <button id="deleteProfileBtn">Delete</button>
+    </div>
+    <!-- Controls (level, boosts, training) -->
+    <div class="section">
+      <label>Level</label>
+      <select id="level" class="dropdown"></select>
+    </div>
+    <div class="section">
+      <label>Boosts <span class="note">(Distribute up to 20 between Health, Attack, Speed)</span></label>
+      <div class="boosts-grid">
+        <span>Health Boost:</span><input type="number" id="boostHealth" value="0" min="0" max="20"><span></span>
+        <span>Attack Boost:</span><input type="number" id="boostAttack" value="0" min="0" max="20"><span></span>
+        <span>Speed Boost:</span><input type="number" id="boostSpeed" value="0" min="0" max="20"><span></span>
+      </div>
+      <div class="error" id="boostError"></div>
+    </div>
+    <div class="section">
+      <label>Training Points <span class="note">(Up to 120 per stat, or custom cap)</span></label>
+      <div class="training-grid">
+        <span>Health TP:</span><input type="number" id="tpHealth" value="0" min="0" max="120"><input type="number" id="capHealth" value="120" min="1" style="width:50px;" title="Cap">
+        <span>Attack TP:</span><input type="number" id="tpAttack" value="0" min="0" max="120"><input type="number" id="capAttack" value="120" min="1" style="width:50px;" title="Cap">
+        <span>Speed TP:</span><input type="number" id="tpSpeed" value="0" min="0" max="120"><input type="number" id="capSpeed" value="120" min="1" style="width:50px;" title="Cap">
+        <span>Armor TP:</span><input type="number" id="tpArmor" value="0" min="0" max="120"><input type="number" id="capArmor" value="120" min="1" style="width:50px;" title="Cap">
+        <span>Crit Rate TP:</span><input type="number" id="tpCritRate" value="0" min="0" max="120"><input type="number" id="capCritRate" value="120" min="1" style="width:50px;" title="Cap">
+        <span>Crit Damage TP:</span><input type="number" id="tpCritDamage" value="0" min="0" max="120"><input type="number" id="capCritDamage" value="120" min="1" style="width:50px;" title="Cap">
+      </div>
+      <div class="error" id="tpError"></div>
+    </div>
+    <!-- Final Stats -->
+    <div class="final-stats" id="finalStats"></div>
+    <!-- Base Stats (moved below) -->
+    <div class="behind-final">
+      <label>Base Stats</label>
+      <div class="stats-grid">
+        <span>Health:</span><input type="number" id="baseHealth" value="1000" min="0"><span></span>
+        <span>Attack:</span><input type="number" id="baseAttack" value="500" min="0"><span></span>
+        <span>Speed:</span><input type="number" id="baseSpeed" value="100" min="0"><span></span>
+        <span>Armor:</span><input type="number" id="baseArmor" value="10" min="0"><span></span>
+        <span>Crit Rate:</span><input type="number" id="baseCritRate" value="5" min="0"><span>%</span>
+        <span>Crit Damage:</span><input type="number" id="baseCritDamage" value="150" min="0"><span>%</span>
+      </div>
+    </div>
+    <!-- Per-level Gain (moved below, now percent) -->
+    <div class="behind-final">
+      <label>Per-level Increase (%)</label>
+      <div class="gain-grid">
+        <span>Health Gain:</span><input type="number" id="gainHealth" value="3" min="0" step="0.01"><span>%</span>
+        <span>Attack Gain:</span><input type="number" id="gainAttack" value="2.5" min="0" step="0.01"><span>%</span>
+        <span>Speed Gain:</span><input type="number" id="gainSpeed" value="1" min="0" step="0.01"><span>%</span>
+        <span>Armor Gain:</span><input type="number" id="gainArmor" value="1" min="0" step="0.01"><span>%</span>
+        <span>Crit Rate Gain:</span><input type="number" id="gainCritRate" value="0.2" min="0" step="0.01"><span>%</span>
+        <span>Crit Damage Gain:</span><input type="number" id="gainCritDamage" value="0.5" min="0" step="0.01"><span>%</span>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Default dino presets...
+    const defaultDinos = {
+      "Tyrannosaurus": {
+        baseHealth: 1200, baseAttack: 600, baseSpeed: 90, baseArmor: 10, baseCritRate: 5, baseCritDamage: 150,
+        gainHealth: 3, gainAttack: 2.8, gainSpeed: 1, gainArmor: 1, gainCritRate: 0.2, gainCritDamage: 0.5
+      },
+      "Velociraptor": {
+        baseHealth: 800, baseAttack: 350, baseSpeed: 140, baseArmor: 5, baseCritRate: 10, baseCritDamage: 135,
+        gainHealth: 2, gainAttack: 1.7, gainSpeed: 2, gainArmor: 0.5, gainCritRate: 0.3, gainCritDamage: 0.6
+      },
+      "Triceratops": {
+        baseHealth: 1600, baseAttack: 400, baseSpeed: 70, baseArmor: 25, baseCritRate: 3, baseCritDamage: 130,
+        gainHealth: 4, gainAttack: 1.25, gainSpeed: 1, gainArmor: 2, gainCritRate: 0.1, gainCritDamage: 0.4
+      }
+    };
 
-            for (let i = 1; i <= level; i++) {
-                for (const stat in baseStats) {
-                    baseStats[stat] += statGains[stat];
-                    baseStats[stat] = Math.round(baseStats[stat]); // Rounding after each level up
-                }
-            }
-            return baseStats;
+    function populateDefaultDinoList() {
+      const select = document.getElementById('defaultDinoList');
+      select.innerHTML = '<option value="">Select Default Dino</option>';
+      Object.keys(defaultDinos).forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name; opt.textContent = name;
+        select.appendChild(opt);
+      });
+    }
+
+    document.getElementById('defaultDinoList').addEventListener('change', function() {
+      const name = this.value;
+      if (!name) return;
+      const d = defaultDinos[name];
+      document.getElementById('baseHealth').value = d.baseHealth;
+      document.getElementById('baseAttack').value = d.baseAttack;
+      document.getElementById('baseSpeed').value = d.baseSpeed;
+      document.getElementById('baseArmor').value = d.baseArmor;
+      document.getElementById('baseCritRate').value = d.baseCritRate;
+      document.getElementById('baseCritDamage').value = d.baseCritDamage;
+      document.getElementById('gainHealth').value = d.gainHealth;
+      document.getElementById('gainAttack').value = d.gainAttack;
+      document.getElementById('gainSpeed').value = d.gainSpeed;
+      document.getElementById('gainArmor').value = d.gainArmor;
+      document.getElementById('gainCritRate').value = d.gainCritRate;
+      document.getElementById('gainCritDamage').value = d.gainCritDamage;
+      updateStats();
+    });
+
+    // ---- User Profile Management (localStorage) ----
+    function getProfileFields() {
+      return {
+        name: document.getElementById('dinoName').value,
+        baseHealth: document.getElementById('baseHealth').value,
+        baseAttack: document.getElementById('baseAttack').value,
+        baseSpeed: document.getElementById('baseSpeed').value,
+        baseArmor: document.getElementById('baseArmor').value,
+        baseCritRate: document.getElementById('baseCritRate').value,
+        baseCritDamage: document.getElementById('baseCritDamage').value,
+        gainHealth: document.getElementById('gainHealth').value,
+        gainAttack: document.getElementById('gainAttack').value,
+        gainSpeed: document.getElementById('gainSpeed').value,
+        gainArmor: document.getElementById('gainArmor').value,
+        gainCritRate: document.getElementById('gainCritRate').value,
+        gainCritDamage: document.getElementById('gainCritDamage').value,
+        capHealth: document.getElementById('capHealth').value,
+        capAttack: document.getElementById('capAttack').value,
+        capSpeed: document.getElementById('capSpeed').value,
+        capArmor: document.getElementById('capArmor').value,
+        capCritRate: document.getElementById('capCritRate').value,
+        capCritDamage: document.getElementById('capCritDamage').value
+      };
+    }
+    function setProfileFields(p) {
+      if (!p) return;
+      document.getElementById('dinoName').value = p.name || '';
+      document.getElementById('baseHealth').value = p.baseHealth || 1000;
+      document.getElementById('baseAttack').value = p.baseAttack || 500;
+      document.getElementById('baseSpeed').value = p.baseSpeed || 100;
+      document.getElementById('baseArmor').value = p.baseArmor || 10;
+      document.getElementById('baseCritRate').value = p.baseCritRate || 5;
+      document.getElementById('baseCritDamage').value = p.baseCritDamage || 150;
+      document.getElementById('gainHealth').value = p.gainHealth || 3;
+      document.getElementById('gainAttack').value = p.gainAttack || 2.5;
+      document.getElementById('gainSpeed').value = p.gainSpeed || 1;
+      document.getElementById('gainArmor').value = p.gainArmor || 1;
+      document.getElementById('gainCritRate').value = p.gainCritRate || 0.2;
+      document.getElementById('gainCritDamage').value = p.gainCritDamage || 0.5;
+      document.getElementById('capHealth').value = p.capHealth || 120;
+      document.getElementById('capAttack').value = p.capAttack || 120;
+      document.getElementById('capSpeed').value = p.capSpeed || 120;
+      document.getElementById('capArmor').value = p.capArmor || 120;
+      document.getElementById('capCritRate').value = p.capCritRate || 120;
+      document.getElementById('capCritDamage').value = p.capCritDamage || 120;
+    }
+    function saveProfile() {
+      const dinoName = document.getElementById('dinoName').value.trim();
+      if (!dinoName) {
+        alert('Custom Profile Name required!');
+        return;
+      }
+      let profiles = JSON.parse(localStorage.getItem('dinoProfiles') || '{}');
+      profiles[dinoName] = getProfileFields();
+      localStorage.setItem('dinoProfiles', JSON.stringify(profiles));
+      populateProfileList();
+    }
+    function loadProfile() {
+      const dinoList = document.getElementById('dinoList');
+      const dinoName = dinoList.value;
+      if (!dinoName) return;
+      let profiles = JSON.parse(localStorage.getItem('dinoProfiles') || '{}');
+      setProfileFields(profiles[dinoName]);
+      updateStats();
+    }
+    function deleteProfile() {
+      const dinoList = document.getElementById('dinoList');
+      const dinoName = dinoList.value;
+      if (!dinoName) return;
+      let profiles = JSON.parse(localStorage.getItem('dinoProfiles') || '{}');
+      delete profiles[dinoName];
+      localStorage.setItem('dinoProfiles', JSON.stringify(profiles));
+      populateProfileList();
+      document.getElementById('dinoName').value = '';
+    }
+    function populateProfileList() {
+      const dinoList = document.getElementById('dinoList');
+      let profiles = JSON.parse(localStorage.getItem('dinoProfiles') || '{}');
+      dinoList.innerHTML = '<option value="">Select Dino</option>';
+      Object.keys(profiles).forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name; opt.textContent = name;
+        dinoList.appendChild(opt);
+      });
+    }
+    document.getElementById('saveProfileBtn').onclick = saveProfile;
+    document.getElementById('loadProfileBtn').onclick = loadProfile;
+    document.getElementById('deleteProfileBtn').onclick = deleteProfile;
+    document.getElementById('newProfileBtn').onclick = function() {
+      setProfileFields({});
+    };
+    window.onload = function() {
+      populateDefaultDinoList();
+      populateProfileList();
+      // Fill level dropdown
+      const levelSelect = document.getElementById('level');
+      for(let i=1; i<=35; i++) {
+        const opt = document.createElement('option');
+        opt.value = i; opt.textContent = i;
+        levelSelect.appendChild(opt);
+      }
+      levelSelect.value = "1";
+      updateStats();
+    };
+    // --- End Profile Management ---
+    const baseInputs = {
+      Health: document.getElementById('baseHealth'),
+      Attack: document.getElementById('baseAttack'),
+      Speed: document.getElementById('baseSpeed'),
+      Armor: document.getElementById('baseArmor'),
+      CritRate: document.getElementById('baseCritRate'),
+      CritDamage: document.getElementById('baseCritDamage')
+    };
+    const gainInputs = {
+      Health: document.getElementById('gainHealth'),
+      Attack: document.getElementById('gainAttack'),
+      Speed: document.getElementById('gainSpeed'),
+      Armor: document.getElementById('gainArmor'),
+      CritRate: document.getElementById('gainCritRate'),
+      CritDamage: document.getElementById('gainCritDamage')
+    };
+    const boostInputs = {
+      Health: document.getElementById('boostHealth'),
+      Attack: document.getElementById('boostAttack'),
+      Speed: document.getElementById('boostSpeed')
+    };
+    const tpInputs = {
+      Health: document.getElementById('tpHealth'),
+      Attack: document.getElementById('tpAttack'),
+      Speed: document.getElementById('tpSpeed'),
+      Armor: document.getElementById('tpArmor'),
+      CritRate: document.getElementById('tpCritRate'),
+      CritDamage: document.getElementById('tpCritDamage')
+    };
+    const capInputs = {
+      Health: document.getElementById('capHealth'),
+      Attack: document.getElementById('capAttack'),
+      Speed: document.getElementById('capSpeed'),
+      Armor: document.getElementById('capArmor'),
+      CritRate: document.getElementById('capCritRate'),
+      CritDamage: document.getElementById('capCritDamage')
+    };
+    const boostError = document.getElementById('boostError');
+    const tpError = document.getElementById('tpError');
+    const finalStats = document.getElementById('finalStats');
+    const levelSelect = document.getElementById('level');
+    const allInputs = [
+      ...Object.values(baseInputs),
+      ...Object.values(gainInputs),
+      ...Object.values(boostInputs),
+      ...Object.values(tpInputs),
+      ...Object.values(capInputs),
+      levelSelect
+    ];
+    allInputs.forEach(input => input.addEventListener('input', updateStats));
+    levelSelect.addEventListener('change', updateStats);
+
+    function updateStats() {
+      let totalBoosts = +boostInputs.Health.value + +boostInputs.Attack.value + +boostInputs.Speed.value;
+      let boostsValid = totalBoosts <= 20;
+      boostError.textContent = boostsValid ? "" : "You can only allocate up to 20 total boost points!";
+      let tpValid = true;
+      for (let stat in tpInputs) {
+        let tp = +tpInputs[stat].value;
+        let cap = +capInputs[stat].value;
+        if (tp > cap) {
+          tpValid = false;
+        }
+        if (tp > 120) { tpValid = false; }
+        tpInputs[stat].max = cap;
+      }
+      tpError.textContent = tpValid ? "" : "A training point value exceeds its cap (or 120).";
+      if (!boostsValid || !tpValid) {
+        finalStats.innerHTML = "<span class='error'>Please correct the errors above to see results.</span>";
+        return;
+      }
+      let lvl = +levelSelect.value;
+      let display = "<h3>Final Stats</h3><table>";
+      const statDisplayNames = {
+        Health: "Health",
+        Attack: "Attack",
+        Speed: "Speed",
+        Armor: "Armor",
+        CritRate: "Crit Rate",
+        CritDamage: "Crit Damage"
+      };
+      for (let stat in baseInputs) {
+        let base = +baseInputs[stat].value;
+        let percentGain = +gainInputs[stat].value;
+        let boost = boostInputs[stat] ? +boostInputs[stat].value : 0;
+        let tp = tpInputs[stat] ? +tpInputs[stat].value : 0;
+        let cap = capInputs[stat] ? +capInputs[stat].value : 120;
+
+        // --- Per-level rounding after every level up (EXPO GROWTH) ---
+        let statValue = base;
+        for (let i = 2; i <= lvl; i++) {
+          statValue = statValue * (1 + percentGain / 100);
+          statValue = Math.round(statValue); // round after each level
         }
 
-        // Example usage
-        console.log(calculateStats(5)); // Calculate stats for level 5
-    </script>
+        // Apply boosts and TP
+        if (["Health", "Attack", "Speed"].includes(stat)) {
+          statValue += Math.round(base * 0.02 * boost);
+        }
+        if (["Health", "Attack", "Speed", "Armor"].includes(stat)) {
+          statValue += tp;
+        } else if (stat === "CritRate") {
+          statValue += 0.1 * tp;
+        } else if (stat === "CritDamage") {
+          statValue += 0.2 * tp;
+        }
+        let valueDisplay = statValue.toFixed(2);
+        if (stat === "CritRate" || stat === "CritDamage") valueDisplay += "%";
+        display += `<tr><td class="stat-label">${statDisplayNames[stat]}:</td><td>${valueDisplay}</td></tr>`;
+      }
+      display += "</table>";
+      finalStats.innerHTML = display;
+    }
+  </script>
 </body>
 </html>
