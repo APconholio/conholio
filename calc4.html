@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dino Training Calculator — Single File</title>
+  <style>
+    :root{
+      --bg:#071425; --panel:#081323; --muted:#9fb0c8; --card:#0b1724;
+      --accent:#7c3aed; --glass: rgba(255,255,255,0.03);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color-scheme: dark;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#031026 0%, #071428 60%);color:#e6f0fb}
+    .wrap{max-width:1150px;margin:28px auto;padding:18px;display:grid;grid-template-columns:1fr 420px;gap:18px}
+    header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    h1{margin:0;font-size:18px}
+    .muted{color:var(--muted);font-size:13px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02)); padding:16px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input[type=number], input[type=text], select{background:var(--glass);border:1px solid rgba(255,255,255,0.04);padding:8px;border-radius:9px;color:inherit;width:100%;outline:none}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .controls{display:flex;flex-direction:column;gap:12px}
+    button{cursor:pointer;border-radius:10px;padding:8px 10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    .primary{background:linear-gradient(90deg,var(--accent),#4f46e5);color:white;border:none}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{padding:8px;text-align:left;border-top:1px dashed rgba(255,255,255,0.03)}
+    thead th{font-size:13px;color:var(--muted)}
+    .small{font-size:12px;color:var(--muted)}
+    .pill{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:999px;font-weight:600}
+    footer{grid-column:1/-1;text-align:center;color:var(--muted);font-size:12px;margin-top:8px}
+    @media(max-width:980px){.wrap{grid-template-columns:1fr;padding:10px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Dino Training Calculator</h1>
+        <div class="muted">Enter base stats, boosts and training points. Auto-distributes leftover TP for L35.</div>
+      </div>
+      <div style="text-align:right">
+        <div class="small">Rules</div>
+        <div class="muted">Max level 35 — 7 TP per level. Max 35 total boosts. TP per stat cap configurable (default 2000).</div>
+      </div>
+    </header>
+
+    <!-- Left: Inputs -->
+    <section class="card">
+      <div class="controls">
+        <div class="grid-2">
+          <div>
+            <label>Dinolevel (1–35)</label>
+            <input id="level" type="number" min="1" max="35" value="1" />
+          </div>
+          <div>
+            <label>Available TP this level (calculated)</label>
+            <div class="pill" id="availableTPDisplay">7</div>
+          </div>
+        </div>
+
+        <div>
+          <label>Base stats</label>
+          <div class="grid-3">
+            <div><label class="small">Health</label><input id="baseHealth" type="number" step="1" value="1000" /></div>
+            <div><label class="small">Attack</label><input id="baseAttack" type="number" step="1" value="200" /></div>
+            <div><label class="small">Speed</label><input id="baseSpeed" type="number" step="0.1" value="100" /></div>
+            <div><label class="small">Armor</label><input id="baseArmor" type="number" step="0.1" value="0" /></div>
+            <div><label class="small">Crit Rate (%)</label><input id="baseCritRate" type="number" step="0.1" value="5" /></div>
+            <div><label class="small">Crit Damage (%)</label><input id="baseCritDmg" type="number" step="0.1" value="50" /></div>
+          </div>
+        </div>
+
+        <div>
+          <label>Stat Boost counts (total across H/A/S ≤ 35)</label>
+          <div class="grid-3">
+            <div><label class="small">Health boosts (count)</label><input id="boostHealth" type="number" min="0" max="35" value="0" /></div>
+            <div><label class="small">Attack boosts (count)</label><input id="boostAttack" type="number" min="0" max="35" value="0" /></div>
+            <div><label class="small">Speed boosts (count)</label><input id="boostSpeed" type="number" min="0" max="35" value="0" /></div>
+          </div>
+          <div class="small" id="boostsInfo">Total boosts used: 0 / 35</div>
+        </div>
+
+        <div>
+          <label>Per-boost increase (absolute)</label>
+          <div class="grid-3">
+            <div><label class="small">Health per-boost</label><input id="boostIncHealth" type="number" step="0.1" value="50" /></div>
+            <div><label class="small">Attack per-boost</label><input id="boostIncAttack" type="number" step="0.1" value="10" /></div>
+            <div><label class="small">Speed per-boost</label><input id="boostIncSpeed" type="number" step="0.01" value="2" /></div>
+          </div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.03)">
+
+        <div>
+          <label>Training Points (manual assignment)</label>
+          <div class="small">Total TP available = Level × 7. You may manually assign TP per stat (will be clamped to per-stat caps). Any leftover TP will be auto-distributed one-by-one (Health → Attack → Speed) up to caps. Caps default to 2000.</div>
+
+          <div class="grid-3" style="margin-top:8px">
+            <div>
+              <label class="small">Health TP (manual)</label>
+              <input id="tpHealth" type="number" min="0" step="1" value="0" />
+              <label class="small">Cap</label>
+              <input id="tpCapHealth" type="number" min="0" step="1" value="2000" />
+            </div>
+            <div>
+              <label class="small">Attack TP (manual)</label>
+              <input id="tpAttack" type="number" min="0" step="1" value="0" />
+              <label class="small">Cap</label>
+              <input id="tpCapAttack" type="number" min="0" step="1" value="2000" />
+            </div>
+            <div>
+              <label class="small">Speed TP (manual)</label>
+              <input id="tpSpeed" type="number" min="0" step="1" value="0" />
+              <label class="small">Cap</label>
+              <input id="tpCapSpeed" type="number" min="0" step="1" value="2000" />
+            </div>
+          </div>
+
+          <div class="grid-3" style="margin-top:8px">
+            <div>
+              <label class="small">Health TP increase (per point, absolute)</label>
+              <input id="tpIncHealth" type="number" step="0.01" value="5" />
+            </div>
+            <div>
+              <label class="small">Attack TP increase (per point, absolute)</label>
+              <input id="tpIncAttack" type="number" step="0.01" value="1" />
+            </div>
+            <div>
+              <label class="small">Speed TP increase (per point, absolute)</label>
+              <input id="tpIncSpeed" type="number" step="0.01" value="0.2" />
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+            <div class="small">Total TP manually applied:</div><div class="pill" id="tpApplied">0</div>
+            <div class="small">Remaining TP (to auto-distribute):</div><div class="pill" id="tpRemaining">0</div>
+          </div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.03)">
+
+        <div>
+          <label>Other flat increases</label>
+          <div class="grid-3">
+            <div><label class="small">Armor (flat)</label><input id="armorInc" type="number" step="0.1" value="0" /></div>
+            <div><label class="small">Crit Rate (absolute %)</label><input id="critRateInc" type="number" step="0.1" value="0" /></div>
+            <div><label class="small">Crit Damage (absolute %)</label><input id="critDmgInc" type="number" step="0.1" value="0" /></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="calcBtn" class="primary">Calculate</button>
+          <button id="resetBtn">Reset inputs</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: Results -->
+    <aside class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="pill" id="profileLabel">Current</div>
+          <div class="small" id="meta">Level 1 • available TP: 7</div>
+        </div>
+        <div style="text-align:right">
+          <div class="small">Auto distribution order:</div>
+          <div class="small">Health → Attack → Speed</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="small"><strong>Final calculated stats (using current level TP)</strong></div>
+        <table id="resultTable">
+          <thead><tr><th>Stat</th><th>Base</th><th>Boosts</th><th>TP Contribution</th><th>Final</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="small"><strong>Final L35 stats (simulate level 35, auto-distribute leftover TP to reach 35×7 = 245 TP)</strong></div>
+        <table id="l35Table">
+          <thead><tr><th>Stat</th><th>Base</th><th>Boosts</th><th>TP Contribution</th><th>Final L35</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </aside>
+
+    <footer class="muted">Notes: Crit Rate & Crit Damage are shown as percentages. The auto-distribution will skip stats that reached their TP caps.</footer>
+  </div>
+
+  <script>
+    // --- Helper utilities ---
+    const $ = (s) => document.querySelector(s);
+    function toNum(el, def = 0) { const v = parseFloat(el.value); return isNaN(v) ? def : v; }
+    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+    function int(v){ return Math.floor(v); }
+    function fmt(v, unit='') {
+      if (v === '' || v === null || v === undefined) return '';
+      if (unit === '%') return (Math.round(v*1000)/1000) + '%';
+      if (Math.abs(v - Math.round(v)) > 0.0001) return (Math.round(v*1000)/1000);
+      return Math.round(v);
+    }
+
+    // --- DOM refs ---
+    const levelEl = $('#level'), availableTPDisplay = $('#availableTPDisplay');
+    const baseHealthEl = $('#baseHealth'), baseAttackEl = $('#baseAttack'), baseSpeedEl = $('#baseSpeed'),
+          baseArmorEl = $('#baseArmor'), baseCritRateEl = $('#baseCritRate'), baseCritDmgEl = $('#baseCritDmg');
+
+    const boostHealthEl = $('#boostHealth'), boostAttackEl = $('#boostAttack'), boostSpeedEl = $('#boostSpeed');
+    const boostIncHealthEl = $('#boostIncHealth'), boostIncAttackEl = $('#boostIncAttack'), boostIncSpeedEl = $('#boostIncSpeed');
+
+    const tpHealthEl = $('#tpHealth'), tpAttackEl = $('#tpAttack'), tpSpeedEl = $('#tpSpeed');
+    const tpCapHealthEl = $('#tpCapHealth'), tpCapAttackEl = $('#tpCapAttack'), tpCapSpeedEl = $('#tpCapSpeed');
+    const tpIncHealthEl = $('#tpIncHealth'), tpIncAttackEl = $('#tpIncAttack'), tpIncSpeedEl = $('#tpIncSpeed');
+
+    const armorIncEl = $('#armorInc'), critRateIncEl = $('#critRateInc'), critDmgIncEl = $('#critDmgInc');
+
+    const tpAppliedEl = $('#tpApplied'), tpRemainingEl = $('#tpRemaining'), boostsInfoEl = $('#boostsInfo');
+    const metaEl = $('#meta');
+
+    const calcBtn = $('#calcBtn'), resetBtn = $('#resetBtn');
+    const resultTbody = $('#resultTable tbody'), l35Tbody = $('#l35Table tbody');
+
+    const ORDER = ['health','attack','speed']; // auto distribution order
+
+    // --- Core logic functions ---
+
+    // Compute available TP for a given level (7 per level)
+    function totalTPForLevel(lvl) {
+      lvl = clamp(int(lvl), 1, 35);
+      return lvl * 7;
+    }
+
+    // Ensure total boosts <= 35. If exceeded, trim in order speed->attack->health and return adjusted counts + flag message
+    function enforceBoostLimit(counts) {
+      const maxTotal = 35;
+      let total = counts.health + counts.attack + counts.speed;
+      if (total <= maxTotal) return {counts, trimmed: false};
+      let excess = total - maxTotal;
+      const order = ['speed','attack','health'];
+      const out = {...counts};
+      for (const k of order) {
+        if (excess <= 0) break;
+        const reducible = Math.min(out[k], excess);
+        out[k] -= reducible;
+        excess -= reducible;
+      }
+      return {counts: out, trimmed: true};
+    }
+
+    // Allocate TP given available, manual assignments, caps. Returns final TP allocation object and appliedManualSum, remainingAfterManual
+    function allocateTP(availableTP, manualTP, caps) {
+      // clone
+      let alloc = {health: int(manualTP.health), attack: int(manualTP.attack), speed: int(manualTP.speed)};
+      // clamp manual to caps
+      alloc.health = clamp(alloc.health, 0, caps.health);
+      alloc.attack = clamp(alloc.attack, 0, caps.attack);
+      alloc.speed = clamp(alloc.speed, 0, caps.speed);
+
+      let manualSum = alloc.health + alloc.attack + alloc.speed;
+
+      // if manualSum > availableTP, proportionally scale down then floor and distribute remainder
+      if (manualSum > availableTP) {
+        const ratio = availableTP / manualSum;
+        // scale
+        let scaled = {
+          health: Math.floor(alloc.health * ratio),
+          attack: Math.floor(alloc.attack * ratio),
+          speed: Math.floor(alloc.speed * ratio)
+        };
+        let scaledSum = scaled.health + scaled.attack + scaled.speed;
+        let remainder = availableTP - scaledSum;
+        // distribute remainder by order until used
+        let idx = 0;
+        while (remainder > 0) {
+          const key = ORDER[idx % ORDER.length];
+          if (scaled[key] < caps[key]) { scaled[key]++; remainder--; }
+          idx++;
+          // break if cyclical and can't add (all at caps)
+          if (idx > 10000) break;
+        }
+        alloc = scaled;
+        manualSum = alloc.health + alloc.attack + alloc.speed;
+        return {alloc, appliedManual: manualSum, remaining: 0};
+      }
+
+      // manualSum <= availableTP: now auto-distribute remaining one-by-one in ORDER skipping reached caps
+      let remaining = availableTP - manualSum;
+      // quick exit if no remaining
+      if (remaining <= 0) {
+        return {alloc, appliedManual: manualSum, remaining: 0};
+      }
+      // else distribute in round-robin order health->attack->speed
+      let idx = 0;
+      // to avoid infinite loop if none can accept, track full loop without change
+      while (remaining > 0) {
+        let changed = false;
+        for (let k of ORDER) {
+          if (remaining <= 0) break;
+          if (alloc[k] < caps[k]) {
+            alloc[k] += 1;
+            remaining -= 1;
+            changed = true;
+          }
+        }
+        if (!changed) break; // no stat can accept more TP
+      }
+
+      const appliedManual = manualSum; // manual were the initial ones
+      return {alloc, appliedManual, remaining: Math.max(0, remaining)};
+    }
+
+    // Apply boosts and TP contributions to compute final stats
+    function computeFinal(base, boosts, boostIncs, tpAlloc, tpIncs, extras) {
+      const afterBoosts = {
+        health: base.health + boosts.health * boostIncs.health,
+        attack: base.attack + boosts.attack * boostIncs.attack,
+        speed: base.speed + boosts.speed * boostIncs.speed,
+        armor: base.armor + extras.armor,
+        critRate: base.critRate + extras.critRate,
+        critDmg: base.critDmg + extras.critDmg
+      };
+      const tpContribution = {
+        health: tpAlloc.health * tpIncs.health,
+        attack: tpAlloc.attack * tpIncs.attack,
+        speed: tpAlloc.speed * tpIncs.speed
+      };
+      const final = {
+        health: afterBoosts.health + tpContribution.health,
+        attack: afterBoosts.attack + tpContribution.attack,
+        speed: afterBoosts.speed + tpContribution.speed,
+        armor: afterBoosts.armor,
+        critRate: afterBoosts.critRate,
+        critDmg: afterBoosts.critDmg
+      };
+      return {afterBoosts, tpContribution, final};
+    }
+
+    // --- UI update / glue logic ---
+    function refreshAvailableAndMeta() {
+      const lvl = clamp(int(levelEl.value || 1), 1, 35);
+      const avail = totalTPForLevel(lvl);
+      availableTPDisplay.textContent = avail;
+      metaEl.textContent = `Level ${lvl} • available TP: ${avail}`;
+    }
+
+    function collectInputs() {
+      const base = {
+        health: toNum(baseHealthEl,0),
+        attack: toNum(baseAttackEl,0),
+        speed: toNum(baseSpeedEl,0),
+        armor: toNum(baseArmorEl,0),
+        critRate: toNum(baseCritRateEl,0),
+        critDmg: toNum(baseCritDmgEl,0)
+      };
+      const boosts = {
+        health: int(toNum(boostHealthEl,0)),
+        attack: int(toNum(boostAttackEl,0)),
+        speed: int(toNum(boostSpeedEl,0))
+      };
+      const boostIncs = {
+        health: toNum(boostIncHealthEl,0),
+        attack: toNum(boostIncAttackEl,0),
+        speed: toNum(boostIncSpeedEl,0)
+      };
+      const manualTP = {
+        health: int(toNum(tpHealthEl,0)),
+        attack: int(toNum(tpAttackEl,0)),
+        speed: int(toNum(tpSpeedEl,0))
+      };
+      const caps = {
+        health: Math.max(0, int(toNum(tpCapHealthEl,2000))),
+        attack: Math.max(0, int(toNum(tpCapAttackEl,2000))),
+        speed: Math.max(0, int(toNum(tpCapSpeedEl,2000)))
+      };
+      const tpIncs = {
+        health: toNum(tpIncHealthEl,0),
+        attack: toNum(tpIncAttackEl,0),
+        speed: toNum(tpIncSpeedEl,0)
+      };
+      const extras = {
+        armor: toNum(armorIncEl,0),
+        critRate: toNum(critRateIncEl,0),
+        critDmg: toNum(critDmgIncEl,0)
+      };
+      return {base, boosts, boostIncs, manualTP, caps, tpIncs, extras};
+    }
+
+    function updateBoostInfo(boosts) {
+      const total = boosts.health + boosts.attack + boosts.speed;
+      boostsInfoEl.textContent = `Total boosts used: ${total} / 35`;
+    }
+
+    // Render result rows for a given table body and computed values
+    function renderResultTable(tbody, base, boosts, boostIncs, tpAlloc, tpIncs, afterBoosts, tpContribution, final, noteSuffix='') {
+      tbody.innerHTML = '';
+      const rows = [
+        {k:'health', label:'Health', unit:''},
+        {k:'attack', label:'Attack', unit:''},
+        {k:'speed', label:'Speed', unit:''},
+        {k:'armor', label:'Armor', unit:''},
+        {k:'critRate', label:'Crit Rate', unit:'%'},
+        {k:'critDmg', label:'Crit Damage', unit:'%'}
+      ];
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        const baseVal = base[r.k] ?? 0;
+        let boostVal = 0;
+        if (r.k === 'health' || r.k === 'attack' || r.k === 'speed') {
+          boostVal = boosts[r.k] * boostIncs[r.k];
+        } else if (r.k === 'armor') {
+          boostVal = extras.armor;
+        } else if (r.k === 'critRate') {
+          boostVal = extras.critRate;
+        } else if (r.k === 'critDmg') {
+          boostVal = extras.critDmg;
+        }
+        const tpContrib = (r.k === 'health' || r.k === 'attack' || r.k === 'speed') ? tpContribution[r.k] : '';
+        const finalVal = final[r.k];
+        let boostNote = '';
+        if (r.k === 'health' || r.k === 'attack' || r.k === 'speed') boostNote = `<div class="small">(count: ${boosts[r.k]} × ${boostIncs[r.k]})</div>`;
+        let tpNote = '';
+        if (r.k === 'health' || r.k === 'attack' || r.k === 'speed') tpNote = `<div class="small">(tp: ${tpAlloc[r.k]} × ${tpIncs[r.k]})</div>`;
+
+        tr.innerHTML = `
+          <td style="font-weight:600">${r.label}${noteSuffix?` ${noteSuffix}`:''}</td>
+          <td>${fmt(baseVal,r.unit)}</td>
+          <td>${fmt(boostVal,r.unit)}${boostNote}</td>
+          <td>${tpContrib !== '' ? fmt(tpContrib,r.unit) : ''}${tpNote}</td>
+          <td>${fmt(finalVal,r.unit)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // The main calculation invoked by Calculate button
+    function doCalculate() {
+      refreshAvailableAndMeta();
+
+      let {base, boosts, boostIncs, manualTP, caps, tpIncs, extras} = collectInputs();
+
+      // enforce boost total <= 35
+      const enforce = enforceBoostLimit(boosts);
+      boosts = enforce.counts;
+      if (enforce.trimmed) {
+        alert('Total boost counts exceeded 35 — trimmed from Speed → Attack → Health until total = 35.');
+      }
+      updateBoostInfo(boosts);
+
+      // 1) Current level calculation
+      const lvl = clamp(int(levelEl.value || 1), 1, 35);
+      const availableTP = totalTPForLevel(lvl);
+
+      // If total manual TP > available, we'll proportionally clamp in allocateTP
+      const allocRes = allocateTP(availableTP, manualTP, caps);
+      const tpAlloc = allocRes.alloc; // final allocation (includes auto-distributed leftover up to caps)
+      const appliedManual = allocRes.appliedManual;
+      const remaining = Math.max(0, availableTP - (tpAlloc.health + tpAlloc.attack + tpAlloc.speed));
+
+      tpAppliedEl.textContent = appliedManual;
+      tpRemainingEl.textContent = remaining;
+
+      // compute final for current level
+      const comp = computeFinal(base, boosts, boostIncs, tpAlloc, tpIncs, extras);
+
+      renderResultTable(resultTbody, base, boosts, boostIncs, tpAlloc, tpIncs, comp.afterBoosts, comp.tpContribution, comp.final, '(Current Level)');
+
+      // 2) L35 simulation (always use level 35 / 245 TP)
+      const l35TP = totalTPForLevel(35); // 35*7 = 245
+      // For L35 auto-allocation, we must consider manual TP inputs interpreted as "manual assignments for L??" 
+      // The user request: "If not all 245 TP were manually applied, apply all not manually submitted TP one by one to each stat."
+      // We'll treat the current manualTP numbers as the manual assignments to start with, then allocate remaining up to caps.
+      const l35AllocRes = allocateTP(l35TP, manualTP, caps);
+      const l35TPAlloc = l35AllocRes.alloc;
+      // compute final L35
+      const compL35 = computeFinal(base, boosts, boostIncs, l35TPAlloc, tpIncs, extras);
+      renderResultTable(l35Tbody, base, boosts, boostIncs, l35TPAlloc, tpIncs, compL35.afterBoosts, compL35.tpContribution, compL35.final, '(L35)');
+    }
+
+    // --- Wire up events ---
+    calcBtn.addEventListener('click', doCalculate);
+    resetBtn.addEventListener('click', () => {
+      if (!confirm('Reset inputs to defaults?')) return;
+      // reset some defaults
+      levelEl.value = 1;
+      baseHealthEl.value = 1000; baseAttackEl.value = 200; baseSpeedEl.value = 100;
+      baseArmorEl.value = 0; baseCritRateEl.value = 5; baseCritDmgEl.value = 50;
+      boostHealthEl.value = 0; boostAttackEl.value = 0; boostSpeedEl.value = 0;
+      boostIncHealthEl.value = 50; boostIncAttackEl.value = 10; boostIncSpeedEl.value = 2;
+      tpHealthEl.value = 0; tpAttackEl.value = 0; tpSpeedEl.value = 0;
+      tpCapHealthEl.value = 2000; tpCapAttackEl.value = 2000; tpCapSpeedEl.value = 2000;
+      tpIncHealthEl.value = 5; tpIncAttackEl.value = 1; tpIncSpeedEl.value = 0.2;
+      armorIncEl.value = 0; critRateIncEl.value = 0; critDmgIncEl.value = 0;
+      tpAppliedEl.textContent = '0'; tpRemainingEl.textContent = '0';
+      updateBoostInfo({health:0,attack:0,speed:0});
+      refreshAvailableAndMeta();
+      resultTbody.innerHTML = ''; l35Tbody.innerHTML = '';
+    });
+
+    // update available TP display on level change
+    levelEl.addEventListener('change', refreshAvailableAndMeta);
+    // update available on input
+    levelEl.addEventListener('input', refreshAvailableAndMeta);
+
+    // initial render
+    refreshAvailableAndMeta();
+    updateBoostInfo({health:0,attack:0,speed:0});
+    // initial calculate so user sees L35 default
+    doCalculate();
+
+  </script>
+</body>
+</html>
